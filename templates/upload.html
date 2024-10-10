@@ -7,7 +7,7 @@
   <title>Upload File</title>
   <script>
     function uploadFile(event) {
-      event.preventDefault(); // Отменяем стандартное поведение формы
+      event.preventDefault();
 
       const form = event.target;
       const formData = new FormData(form);
@@ -23,11 +23,11 @@
                 return response.json();
               })
               .then(data => {
-                alert(data.message); // Выводим сообщение об успехе
-                form.reset(); // Очищаем форму (сбрасываем все поля)
+                alert(data.message);
+                form.reset();
               })
               .catch(error => {
-                alert('Ошибка: ' + error.message); // Обработка ошибок
+                alert('Ошибка: ' + error.message);
               });
     }
   </script>

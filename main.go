@@ -11,18 +11,14 @@ import (
 	"time"
 )
 
-// Хранилище для сессий пользователей
 var sessions = make(map[string]string)
 var mutex sync.Mutex
 
-// Главная функция для запуска сервера
 func main() {
 	http.HandleFunc("/", loginHandler)
 	http.HandleFunc("/upload", uploadHandler)
 	http.HandleFunc("/files", listFilesHandler)
 	http.HandleFunc("/download/", downloadHandler)
-
-	// Обслуживание статических файлов (CSS)
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
@@ -32,8 +28,6 @@ func main() {
 		fmt.Println("Ошибка запуска сервера:", err)
 	}
 }
-
-// Обработчик для логина и создания сессий
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		tmpl, err := template.ParseFiles("templates/login.html")
@@ -55,13 +49,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			Value: sessionToken,
 			Path:  "/",
 		})
-
-		// Перенаправление на страницу загрузки
 		http.Redirect(w, r, "/upload", http.StatusFound)
 	}
 }
-
-// Обработчик загрузки файлов
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	sessionToken, err := r.Cookie("session_token")
 	if err != nil {
@@ -101,15 +91,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Ошибка сохранения файла", http.StatusInternalServerError)
 			return
 		}
-
-		// Возвращаем JSON-ответ
 		w.Header().Set("Content-Type", "application/json")
 		jsonResponse := fmt.Sprintf(`{"message": "Файл успешно загружен: %s"}`, handler.Filename)
 		w.Write([]byte(jsonResponse))
 	}
 }
-
-// Обработчик для просмотра списка файлов
 func listFilesHandler(w http.ResponseWriter, r *http.Request) {
 	sessionToken, err := r.Cookie("session_token")
 	if err != nil {
@@ -130,8 +116,6 @@ func listFilesHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<a href='/download/%s/%s'>%s</a><br>", userID, file.Name(), file.Name())
 	}
 }
-
-// Обработчик для скачивания файлов
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	fileName := filepath.Base(r.URL.Path)
 	userDir := filepath.Dir(r.URL.Path)
