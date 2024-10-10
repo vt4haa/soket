@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+  <title>Upload File</title>
+  <script>
+    function uploadFile(event) {
+      event.preventDefault(); // Отменяем стандартное поведение формы
+
+      const form = event.target;
+      const formData = new FormData(form);
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData,
+      })
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error('Сетевая ошибка при загрузке файла');
+                }
+                return response.json();
+              })
+              .then(data => {
+                alert(data.message); // Выводим сообщение об успехе
+                form.reset(); // Очищаем форму (сбрасываем все поля)
+              })
+              .catch(error => {
+                alert('Ошибка: ' + error.message); // Обработка ошибок
+              });
+    }
+  </script>
+</head>
+<body>
+<h1>Загрузка файлов для пользователя {{.}}</h1>
+<form action="/upload" method="POST" enctype="multipart/form-data" onsubmit="uploadFile(event)">
+  <label for="file">Выберите файл:</label>
+  <input type="file" name="file" required>
+  <button type="submit">Загрузить</button>
+</form>
+<a href="/files">Просмотреть загруженные файлы</a>
+</body>
+</html>
