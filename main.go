@@ -9,10 +9,39 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"awesomeproject4/chat"
 )
 
 var sessions = make(map[string]string)
 var mutex sync.Mutex
+
+// MemoryRepo — простое in-memory хранилище сообщений для демонстрации
+type MemoryRepo struct {
+	mu             sync.Mutex
+	roomToMessages map[string][]chat.Message
+}
+
+func NewMemoryRepo() *MemoryRepo {
+	return &MemoryRepo{roomToMessages: make(map[string][]chat.Message)}
+}
+
+func (m *MemoryRepo) SaveMessage(msg chat.Message) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.roomToMessages[msg.Room] = append(m.roomToMessages[msg.Room], msg)
+	return nil
+}
+
+func (m *MemoryRepo) GetLastMessages(room string, count int) ([]chat.Message, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	messages := m.roomToMessages[room]
+	if count <= 0 || count >= len(messages) {
+		return append([]chat.Message(nil), messages...), nil
+	}
+	return append([]chat.Message(nil), messages[len(messages)-count:]...), nil
+}
 
 func main() {
 	http.HandleFunc("/", loginHandler)
@@ -22,12 +51,19 @@ func main() {
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
+	// Инициализация чата (WebSocket)
+	repo := NewMemoryRepo()
+	hub := chat.NewHub(repo)
+	go hub.Run()
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) { chat.ServeWS(hub, w, r) })
+
 	fmt.Println("Сервер запущен на http://localhost:8080")
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println("Ошибка запуска сервера:", err)
 	}
 }
+
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		tmpl, err := template.ParseFiles("templates/login.html")
@@ -52,6 +88,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/upload", http.StatusFound)
 	}
 }
+
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	sessionToken, err := r.Cookie("session_token")
 	if err != nil {
@@ -96,6 +133,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(jsonResponse))
 	}
 }
+
 func listFilesHandler(w http.ResponseWriter, r *http.Request) {
 	sessionToken, err := r.Cookie("session_token")
 	if err != nil {
@@ -116,6 +154,7 @@ func listFilesHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<a href='/download/%s/%s'>%s</a><br>", userID, file.Name(), file.Name())
 	}
 }
+
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	fileName := filepath.Base(r.URL.Path)
 	userDir := filepath.Dir(r.URL.Path)
